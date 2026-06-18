@@ -1,0 +1,45 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  margin: 0;
+  background: #F7F5EF;
+  color: #2A2A28;
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Firma visual: patron de surcos del campo (curvas del logo).
+   Se usa de fondo en el login y el sidebar. */
+.surcos {
+  background-image: repeating-radial-gradient(
+    circle at 50% 140%,
+    rgba(74, 124, 47, 0.06) 0px,
+    rgba(74, 124, 47, 0.06) 2px,
+    transparent 2px,
+    transparent 22px
+  );
+}
+
+.surcos-dark {
+  background-image: repeating-radial-gradient(
+    circle at 50% 130%,
+    rgba(255, 255, 255, 0.05) 0px,
+    rgba(255, 255, 255, 0.05) 2px,
+    transparent 2px,
+    transparent 20px
+  );
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .fade-in { animation: fade 0.4s ease both; }
+}
+@keyframes fade {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
