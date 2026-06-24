@@ -5,7 +5,7 @@ import api from '../api/axios';
 import { useFetch } from '../hooks/useFetch';
 import { useAuth } from '../hooks/useAuth';
 import { Tarjeta, Cargando, ErrorEstado, Vacio, Boton, Campo, Select, Badge } from '../components/ui';
-import { pesos, fechaCorta } from '../utils/format';
+import { pesos, fechaCorta, hoyISO } from '../utils/format';
 
 /**
  * Abre una ventana de impresion con la nota del pedido.
@@ -115,7 +115,10 @@ export default function Pedidos() {
 
   const { datos: pedidos, cargando, error, recargar } = useFetch('/pedidos');
   const clientes = useFetch(puedeCrear ? '/clientes' : null);
-  const productos = useFetch('/productos');
+  // Solo cargamos productos que tienen precio registrado hoy.
+  // Si un producto no tiene precio del día, no aparece en el select.
+  const preciosHoy = useFetch(puedeCrear ? `/productos/precios?fecha=${hoyISO()}` : null);
+  const productosConPrecio = (preciosHoy.datos?.items || []);
 
   const [clienteId, setClienteId] = useState('');
   const [reng, setReng] = useState([{ productoId: '', cantidad: '' }]);
@@ -170,7 +173,11 @@ export default function Pedidos() {
               <div key={i} className="flex gap-2">
                 <Select value={r.productoId} onChange={e => setRenglon(i, 'productoId', e.target.value)}>
                   <option value="">Producto...</option>
-                  {(productos.datos || []).map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+                  {productosConPrecio.map(p => (
+                    <option key={p.productoId} value={p.productoId}>
+                      {p.nombre} — {pesos(p.precioVenta)}/kg
+                    </option>
+                  ))}
                 </Select>
                 <input type="number" step="0.01" placeholder="Cantidad" value={r.cantidad}
                   onChange={e => setRenglon(i, 'cantidad', e.target.value)}
@@ -180,6 +187,11 @@ export default function Pedidos() {
             <button type="button" onClick={addReng} className="text-sm font-medium text-campo hover:underline">
               + Agregar producto
             </button>
+            {productosConPrecio.length === 0 && (
+              <p className="text-sm text-tierra">
+                No hay productos con precio registrado para hoy. Ve a <strong>Precios del día</strong> primero.
+              </p>
+            )}
             {msg && <p className="text-sm text-tierra">{msg}</p>}
             <Boton tipo="submit">Registrar pedido</Boton>
           </form>
