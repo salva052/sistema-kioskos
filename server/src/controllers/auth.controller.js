@@ -36,6 +36,16 @@ const AuthController = {
     }
   },
 
+  async eliminar(req, res, next) {
+    try {
+      if (Number(req.params.id) === req.user.id) {
+        return res.status(400).json({ error: 'No puedes eliminarte a ti mismo' });
+      }
+      await UsuarioModel.desactivar(req.params.id);
+      res.json({ ok: true });
+    } catch (err) { next(err); }
+  },
+
   async listar(req, res, next) {
     try {
       const usuarios = await UsuarioModel.listar();
@@ -47,3 +57,4 @@ const AuthController = {
 };
 
 module.exports = AuthController;
+

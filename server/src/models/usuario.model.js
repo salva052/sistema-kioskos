@@ -36,6 +36,10 @@ const UsuarioModel = {
     );
     return rows;
   },
+
+  async desactivar(id) {
+    await pool.execute('UPDATE usuarios SET activo = FALSE WHERE id = ?', [id]);
+  },
 };
 
 module.exports = UsuarioModel;

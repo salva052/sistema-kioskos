@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { UserPlus, Phone, MapPin, AlertTriangle, Search, ChevronRight } from 'lucide-react';
+import { UserPlus, Phone, MapPin, AlertTriangle, Search, ChevronRight, Trash2 } from 'lucide-react';
 import api from '../api/axios';
 import { useFetch } from '../hooks/useFetch';
 import { useAuth } from '../hooks/useAuth';
@@ -31,6 +31,15 @@ export default function Clientes() {
     const v = e.target.value;
     if (v) setSearchParams({ buscar: v });
     else setSearchParams({});
+  };
+
+  const eliminarCliente = async (id, nombre) => {
+    if (!window.confirm(`¿Eliminar al cliente "${nombre}"? Esta acción no se puede deshacer.`)) return;
+    try {
+      await api.delete(`/clientes/${id}`);
+      recargar();
+      if (esAdmin) deudores.recargar();
+    } catch (err) { setErrForm(err.response?.data?.error || 'No se pudo eliminar'); }
   };
 
   const crear = async (e) => {
@@ -128,6 +137,15 @@ export default function Clientes() {
                         </div>
                         <div className="flex items-center gap-2">
                           {Number(c.deuda) > 0 && <Badge color="tierra">Debe {pesos(c.deuda)}</Badge>}
+                          {esAdmin && (
+                            <button
+                              onClick={(e) => { e.preventDefault(); eliminarCliente(c.id, c.nombre); }}
+                              className="text-carbon/30 hover:text-tierra transition"
+                              title="Eliminar cliente"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          )}
                           <ChevronRight className="h-4 w-4 text-carbon/30" />
                         </div>
                       </Link>

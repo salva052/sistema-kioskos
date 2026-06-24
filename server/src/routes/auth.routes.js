@@ -17,3 +17,6 @@ router.get('/me', autenticar, AuthController.perfil);
 router.get('/usuarios', autenticar, autorizar('admin'), AuthController.listar);
 
 module.exports = router;
+
+// Desactivar usuario (solo admin, no puede borrarse a si mismo)
+router.delete('/usuarios/:id', autenticar, autorizar('admin'), AuthController.eliminar);

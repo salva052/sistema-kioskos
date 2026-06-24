@@ -67,6 +67,12 @@ const PedidoService = {
     await PedidoModel.cambiarEstado(id, estado);
     return PedidoModel.buscarPorId(id);
   },
+
+  async eliminar(id) {
+    await this.obtener(id);
+    await PedidoModel.eliminar(id);
+    return { ok: true };
+  },
 };
 
 module.exports = PedidoService;

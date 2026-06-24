@@ -14,7 +14,7 @@ const NAV = [
   { a: '/', icono: LayoutDashboard, texto: 'Panel', roles: ['admin'] },
   { a: '/pedidos', icono: ShoppingCart, texto: 'Pedidos', roles: ['admin', 'tomador', 'repartidor'] },
   { a: '/cotizaciones', icono: Calculator, texto: 'Cotizaciones', roles: ['admin', 'tomador'] },
-  { a: '/clientes', icono: Users, texto: 'Clientes', roles: ['admin', 'tomador'] },
+  { a: '/clientes', icono: Users, texto: 'Clientes', roles: ['admin', 'tomador', 'repartidor'] },
   { a: '/precios', icono: Tag, texto: 'Precios del día', roles: ['admin', 'tomador', 'repartidor'] },
   { a: '/cobros', icono: Wallet, texto: 'Cobros', roles: ['admin', 'repartidor'] },
   { a: '/gastos', icono: Receipt, texto: 'Gastos', roles: ['admin'] },

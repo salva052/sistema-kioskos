@@ -8,9 +8,9 @@ const { autenticar, autorizar } = require('../middleware/auth');
 router.use(autenticar);
 
 // Consultar: admin y tomador de pedidos
-router.get('/', autorizar('admin', 'tomador'), ClienteController.listar);
+router.get('/', autorizar('admin', 'tomador', 'repartidor'), ClienteController.listar);
 router.get('/deudores', autorizar('admin'), ClienteController.deudores);
-router.get('/:id', autorizar('admin', 'tomador'), ClienteController.obtener);
+router.get('/:id', autorizar('admin', 'tomador', 'repartidor'), ClienteController.obtener);
 
 // Crear / editar: admin y tomador de pedidos
 router.post('/', autorizar('admin', 'tomador'), ClienteController.crear);

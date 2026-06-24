@@ -70,27 +70,56 @@ export default function Cotizaciones() {
     if (!resultado) return;
     const { detalle, total, cliente } = resultado;
     const win = window.open('', '_blank');
+    const filas = detalle.map(d => `
+      <tr>
+        <td>${d.nombre}</td>
+        <td class="right">${d.cantidad} kg</td>
+        <td class="right">$${d.precioUnit.toFixed(2)}</td>
+        <td class="right">$${d.subtotal.toFixed(2)}</td>
+      </tr>`).join('');
+
     win.document.write(`<!DOCTYPE html><html lang="es"><head>
       <meta charset="UTF-8"/>
       <title>Cotización</title>
       <style>
-        body { font-family: Arial, sans-serif; font-size: 13px; margin: 24px; color: #222; }
-        h2 { color: #2D5016; margin: 0 0 2px; }
-        .sub { color: #888; font-size: 11px; margin: 0 0 14px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 12px; }
-        th { background: #f0f7ee; text-align: left; padding: 6px 8px; font-size: 11px; text-transform: uppercase; }
-        td { padding: 5px 8px; border-bottom: 1px solid #eee; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #1a1a1a; background: #fff; padding: 28px 32px; }
+        .header { display: flex; align-items: center; gap: 14px; padding-bottom: 14px; border-bottom: 2px solid #2D5016; margin-bottom: 14px; }
+        .logo { width: 52px; height: 52px; object-fit: contain; }
+        .marca h1 { font-size: 18px; font-weight: bold; color: #2D5016; line-height: 1.1; }
+        .marca p { font-size: 10px; color: #888; }
+        .tipo-nota { margin-left: auto; text-align: right; }
+        .tipo-nota .etiqueta { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: .5px; }
+        .tipo-nota .aviso { font-size: 11px; color: #aaa; font-style: italic; }
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 24px; margin-bottom: 16px; font-size: 11.5px; }
+        .info-grid .label { color: #888; }
+        .info-grid .valor { font-weight: 600; }
+        table { width: 100%; border-collapse: collapse; margin-top: 4px; }
+        thead tr { background: #f0f7ee; }
+        th { padding: 7px 8px; text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: .4px; color: #2D5016; border-bottom: 1px solid #c8e6c9; }
+        td { padding: 6px 8px; border-bottom: 1px solid #f0f0f0; font-size: 12px; }
         .right { text-align: right; }
-        .total td { font-weight: bold; border-top: 2px solid #2D5016; padding-top: 8px; }
-        .footer { margin-top: 24px; font-size: 11px; color: #888; text-align: center; border-top: 1px solid #eee; padding-top: 10px; }
-        @media print { body { margin: 10px; } }
+        tfoot tr td { padding-top: 10px; border-top: 2px solid #2D5016; font-weight: bold; font-size: 13px; }
+        .footer { margin-top: 22px; text-align: center; font-size: 10px; color: #aaa; border-top: 1px solid #eee; padding-top: 10px; }
+        @media print { body { padding: 12px 16px; } @page { margin: 0.5cm; } }
       </style>
     </head><body>
-      <h2>Sistema Kiosko's</h2>
-      <p class="sub">Distribuidora de Fruta y Verdura</p>
-      <p><strong>COTIZACIÓN</strong></p>
-      <p>Fecha: ${new Date().toLocaleDateString('es-MX')}</p>
-      ${cliente ? `<p>Cliente: <strong>${cliente.nombre}</strong></p>` : ''}
+      <div class="header">
+        <img class="logo" src="/logo.png" alt="Logo" />
+        <div class="marca">
+          <h1>Frutería Kiosko's</h1>
+          <p>Distribuidora de Fruta y Verdura</p>
+        </div>
+        <div class="tipo-nota">
+          <div class="etiqueta">Cotización</div>
+          <div class="aviso">No es nota de venta</div>
+        </div>
+      </div>
+      <div class="info-grid">
+        <div class="label">Fecha</div>
+        <div class="valor">${new Date().toLocaleDateString('es-MX')}</div>
+        ${cliente ? `<div class="label">Cliente</div><div class="valor">${cliente.nombre}</div>` : ''}
+      </div>
       <table>
         <thead><tr>
           <th>Producto</th>
@@ -98,24 +127,17 @@ export default function Cotizaciones() {
           <th class="right">Precio unit.</th>
           <th class="right">Subtotal</th>
         </tr></thead>
-        <tbody>
-          ${detalle.map(d => `<tr>
-            <td>${d.nombre}</td>
-            <td class="right">${d.cantidad} kg</td>
-            <td class="right">$${d.precioUnit.toFixed(2)}</td>
-            <td class="right">$${d.subtotal.toFixed(2)}</td>
-          </tr>`).join('')}
-        </tbody>
-        <tfoot><tr class="total">
-          <td colspan="3" class="right">TOTAL</td>
-          <td class="right">$${total.toFixed(2)}</td>
+        <tbody>${filas}</tbody>
+        <tfoot><tr>
+          <td colspan="3" class="right" style="color:#2D5016">TOTAL</td>
+          <td class="right" style="color:#2D5016;font-size:15px">$${total.toFixed(2)}</td>
         </tr></tfoot>
       </table>
-      <p class="footer">Esta es una cotización — no es una nota de venta</p>
+      <div class="footer">Frutería Kiosko's — Esta es una cotización, no una nota de venta</div>
     </body></html>`);
     win.document.close();
     win.focus();
-    setTimeout(() => { win.print(); win.close(); }, 400);
+    setTimeout(() => { win.print(); win.close(); }, 500);
   };
 
   const limpiar = () => {

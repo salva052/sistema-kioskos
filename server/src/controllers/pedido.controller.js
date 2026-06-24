@@ -20,6 +20,11 @@ const PedidoController = {
       res.json(await PedidoService.cambiarEstado(req.params.id, req.body.estado));
     } catch (e) { next(e); }
   },
+
+  async eliminar(req, res, next) {
+    try { res.json(await PedidoService.eliminar(req.params.id)); } catch (e) { next(e); }
+  },
 };
 
 module.exports = PedidoController;
+

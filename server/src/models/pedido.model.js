@@ -84,6 +84,20 @@ const PedidoModel = {
   async cambiarEstado(id, estado) {
     await pool.execute('UPDATE pedidos SET estado = ? WHERE id = ?', [estado, id]);
   },
+
+  async eliminar(id) {
+    const conn = await pool.getConnection();
+    try {
+      await conn.beginTransaction();
+      const [[ped]] = await conn.execute('SELECT cliente_id, total FROM pedidos WHERE id = ?', [id]);
+      if (ped) {
+        await conn.execute('UPDATE clientes SET deuda = deuda - ? WHERE id = ?', [ped.total, ped.cliente_id]);
+      }
+      await conn.execute('DELETE FROM pedidos WHERE id = ?', [id]);
+      await conn.commit();
+    } catch (e) { await conn.rollback(); throw e; }
+    finally { conn.release(); }
+  },
 };
 
 module.exports = PedidoModel;

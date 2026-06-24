@@ -40,10 +40,10 @@ export default function App() {
             <RutaProtegida roles={['admin', 'tomador', 'repartidor']}><Pedidos /></RutaProtegida>
           } />
           <Route path="clientes" element={
-            <RutaProtegida roles={['admin', 'tomador']}><Clientes /></RutaProtegida>
+            <RutaProtegida roles={['admin', 'tomador', 'repartidor']}><Clientes /></RutaProtegida>
           } />
           <Route path="clientes/:id" element={
-            <RutaProtegida roles={['admin', 'tomador']}><ClienteDetalle /></RutaProtegida>
+            <RutaProtegida roles={['admin', 'tomador', 'repartidor']}><ClienteDetalle /></RutaProtegida>
           } />
           <Route path="precios" element={
             <RutaProtegida roles={['admin', 'tomador', 'repartidor']}><Precios /></RutaProtegida>

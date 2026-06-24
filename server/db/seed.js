@@ -20,14 +20,9 @@ async function seed() {
     console.log(`  usuario: ${u.nombre} (${u.rol})`);
   }
 
-  const productos = [
-    ['Manzana', false], ['Aguacate', false], ['Jitomate', false],
-    ['Platano', false], ['Chile serrano', false], ['Ensalada italiana', true],
-  ];
-  for (const [nombre, fijo] of productos) {
-    await pool.execute('INSERT INTO productos (nombre, precio_fijo) VALUES (?, ?)', [nombre, fijo ? 1 : 0]);
-  }
-  console.log(`  ${productos.length} productos creados`);
+  // Los productos se agregan desde la interfaz del sistema (Precios del día).
+  // El catálogo arranca vacío para que Christian registre los suyos.
+  console.log('  catalogo de productos vacio (se agregan desde el sistema)');
 
   await pool.execute('INSERT INTO cuentas (nombre, saldo) VALUES (?, ?)', ['Empresa', 0]);
   await pool.execute('INSERT INTO cuentas (nombre, saldo) VALUES (?, ?)', ['Ahorro', 0]);

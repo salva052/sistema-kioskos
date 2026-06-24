@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { UserPlus } from 'lucide-react';
+import { UserPlus, Trash2 } from 'lucide-react';
 import api from '../api/axios';
 import { useFetch } from '../hooks/useFetch';
 import { Tarjeta, Cargando, ErrorEstado, Vacio, Boton, Campo, Input, Select, Badge } from '../components/ui';
@@ -16,6 +16,15 @@ export default function Usuarios() {
 
   const { datos: usuarios, cargando, error, recargar } = useFetch('/auth/usuarios');
   const [msg, setMsg] = useState('');
+
+  const eliminarUsuario = async (id, nombre) => {
+    if (!window.confirm(`¿Desactivar al usuario "${nombre}"? Ya no podrá iniciar sesión.`)) return;
+    try {
+      await api.delete(`/auth/usuarios/${id}`);
+      setMsg(`Usuario "${nombre}" desactivado.`);
+      recargar();
+    } catch (err) { setMsg(err.response?.data?.error || 'No se pudo desactivar'); }
+  };
   const [errForm, setErrForm] = useState('');
   const [guardando, setGuardando] = useState(false);
 
@@ -104,7 +113,15 @@ export default function Usuarios() {
                       <p className="font-medium text-carbon">{u.nombre}</p>
                       <p className="text-xs text-carbon/55">{u.email}</p>
                     </div>
-                    <Badge color={u.rol === 'admin' ? 'tierra' : 'campo'}>{NOMBRE_ROL[u.rol] || u.rol}</Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge color={u.rol === 'admin' ? 'tierra' : 'campo'}>{NOMBRE_ROL[u.rol] || u.rol}</Badge>
+                      <button
+                        onClick={() => eliminarUsuario(u.id, u.nombre)}
+                        className="text-carbon/30 hover:text-tierra transition" title="Desactivar usuario"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
                   </li>
                 ))}
               </ul>

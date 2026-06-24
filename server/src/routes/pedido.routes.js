@@ -17,3 +17,6 @@ router.post('/', autorizar('admin', 'tomador'), PedidoController.crear);
 router.patch('/:id/estado', autorizar('admin', 'repartidor'), PedidoController.cambiarEstado);
 
 module.exports = router;
+
+// Eliminar pedido (solo admin)
+router.delete('/:id', autorizar('admin'), PedidoController.eliminar);
