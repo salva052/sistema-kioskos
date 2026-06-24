@@ -3,7 +3,7 @@ import PropTypes from 'prop-types';
 import { NavLink, useNavigate, Outlet } from 'react-router-dom';
 import {
   LayoutDashboard, Users, ShoppingCart, Wallet, Receipt,
-  Tag, LogOut, Menu, X, UserCog,
+  Tag, LogOut, Menu, X, UserCog, Calculator,
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { Badge } from '../ui';
@@ -13,6 +13,7 @@ import { Badge } from '../ui';
 const NAV = [
   { a: '/', icono: LayoutDashboard, texto: 'Panel', roles: ['admin'] },
   { a: '/pedidos', icono: ShoppingCart, texto: 'Pedidos', roles: ['admin', 'tomador', 'repartidor'] },
+  { a: '/cotizaciones', icono: Calculator, texto: 'Cotizaciones', roles: ['admin', 'tomador'] },
   { a: '/clientes', icono: Users, texto: 'Clientes', roles: ['admin', 'tomador'] },
   { a: '/precios', icono: Tag, texto: 'Precios del día', roles: ['admin', 'tomador', 'repartidor'] },
   { a: '/cobros', icono: Wallet, texto: 'Cobros', roles: ['admin', 'repartidor'] },

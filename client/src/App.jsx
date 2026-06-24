@@ -16,6 +16,7 @@ const Precios = lazy(() => import('./pages/Precios'));
 const Cobros = lazy(() => import('./pages/Cobros'));
 const Gastos = lazy(() => import('./pages/Gastos'));
 const Usuarios = lazy(() => import('./pages/Usuarios'));
+const Cotizaciones = lazy(() => import('./pages/Cotizaciones'));
 const NoEncontrado = lazy(() => import('./pages/NoEncontrado'));
 
 // Decide la pantalla de inicio segun el rol:
@@ -55,6 +56,9 @@ export default function App() {
           } />
           <Route path="usuarios" element={
             <RutaProtegida roles={['admin']}><Usuarios /></RutaProtegida>
+          } />
+          <Route path="cotizaciones" element={
+            <RutaProtegida roles={['admin', 'tomador']}><Cotizaciones /></RutaProtegida>
           } />
         </Route>
 

@@ -23,11 +23,20 @@ const PedidoModel = {
       [id]
     );
     if (!rows[0]) return null;
+    const fechaPedido = rows[0].fecha instanceof Date
+      ? rows[0].fecha.toISOString().slice(0, 10)
+      : String(rows[0].fecha).slice(0, 10);
     const [detalle] = await pool.execute(
-      `SELECT d.*, pr.nombre AS producto_nombre
-       FROM detalle_pedido d JOIN productos pr ON pr.id = d.producto_id
+      `SELECT d.*,
+              pr.nombre AS producto_nombre,
+              COALESCE(p.costo, 0)                               AS costo_unit,
+              COALESCE((d.precio_unit - p.costo) * d.cantidad, 0) AS margen_renglon
+       FROM detalle_pedido d
+       JOIN productos pr ON pr.id = d.producto_id
+       LEFT JOIN precios_diarios p
+              ON p.producto_id = d.producto_id AND p.fecha = ?
        WHERE d.pedido_id = ?`,
-      [id]
+      [fechaPedido, id]
     );
     return { ...rows[0], detalle };
   },

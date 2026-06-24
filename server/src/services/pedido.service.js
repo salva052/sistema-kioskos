@@ -12,7 +12,11 @@ const PedidoService = {
   async obtener(id) {
     const pedido = await PedidoModel.buscarPorId(id);
     if (!pedido) { const e = new Error('Pedido no encontrado'); e.status = 404; throw e; }
-    return pedido;
+    // Calcular margen total del pedido sumando renglones
+    const margenTotal = (pedido.detalle || []).reduce(
+      (s, d) => s + Number(d.margen_renglon || 0), 0
+    );
+    return { ...pedido, margenTotal: Number(margenTotal.toFixed(2)) };
   },
 
   /**
