@@ -1,6 +1,17 @@
 const jwt = require('jsonwebtoken');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'fruteria_secret_cambia_esto';
+const JWT_SECRET = process.env.JWT_SECRET;
+
+// En produccion el JWT_SECRET DEBE estar en las variables de entorno.
+// Si no está configurado, el servidor no arranca para evitar tokens inseguros.
+if (!JWT_SECRET) {
+  if (process.env.NODE_ENV === 'production') {
+    console.error('[FATAL] JWT_SECRET no configurado en produccion. Abortando.');
+    process.exit(1);
+  }
+  console.warn('[WARN] JWT_SECRET no configurado. Usando valor inseguro para desarrollo.');
+}
+const SECRET = JWT_SECRET || 'dev_secret_inseguro_cambiar';
 
 /**
  * Verifica que la peticion traiga un token JWT valido.
@@ -14,7 +25,7 @@ function autenticar(req, res, next) {
   }
   const token = header.split(' ')[1];
   try {
-    req.user = jwt.verify(token, JWT_SECRET);
+    req.user = jwt.verify(token, SECRET);
     next();
   } catch (err) {
     return res.status(401).json({ error: 'Token invalido o expirado' });

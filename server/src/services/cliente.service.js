@@ -1,4 +1,6 @@
 const ClienteModel = require('../models/cliente.model');
+const pool = require('../config/db');
+const { sanitizar, sanitizarObj } = require('../utils/sanitizar');
 
 const ClienteService = {
   listar(opts) {
@@ -47,6 +49,17 @@ const ClienteService = {
     await this.obtener(id);
     await ClienteModel.desactivar(id);
     return { ok: true };
+  },
+
+  /**
+   * Resetea la deuda de un cliente a 0.
+   * Útil para limpiar datos de prueba o corregir deudas inconsistentes.
+   * Solo disponible para el admin.
+   */
+  async resetearDeuda(id) {
+    await this.obtener(id);
+    await pool.execute('UPDATE clientes SET deuda = 0 WHERE id = ?', [id]);
+    return ClienteModel.buscarPorId(id);
   },
 };
 

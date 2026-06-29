@@ -100,12 +100,22 @@ export default function Precios() {
   };
 
   const quitarFruta = async (productoId, nombre) => {
-    if (!window.confirm(`¿Quitar "${nombre}" del catálogo?`)) return;
+    if (!window.confirm(`¿Quitar "${nombre}" del catálogo? Esto elimina la fruta y todos sus precios.`)) return;
     try {
       await api.delete(`/productos/${productoId}`);
       cargar();
     } catch (err) {
       setMsg(err.response?.data?.error || 'No se pudo quitar');
+    }
+  };
+
+  const quitarPrecioHoy = async (productoId, nombre) => {
+    if (!window.confirm(`¿Quitar el precio de "${nombre}" para hoy? La fruta seguirá en el catálogo.`)) return;
+    try {
+      await api.delete(`/productos/precios/${productoId}?fecha=${fecha}`);
+      cargar();
+    } catch (err) {
+      setMsg(err.response?.data?.error || 'No se pudo quitar el precio');
     }
   };
 
@@ -209,10 +219,17 @@ export default function Precios() {
                 </td>
                 {esAdmin && (
                   <td className="px-4 py-2.5 text-right">
-                    <button onClick={() => quitarFruta(it.productoId, it.nombre)}
-                      className="text-carbon/40 hover:text-tierra" title="Quitar fruta">
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                    <div className="flex items-center justify-end gap-2">
+                      <button onClick={() => quitarPrecioHoy(it.productoId, it.nombre)}
+                        className="text-xs text-carbon/40 hover:text-tierra transition"
+                        title="Quitar precio de hoy (la fruta sigue en catálogo)">
+                        quitar precio
+                      </button>
+                      <button onClick={() => quitarFruta(it.productoId, it.nombre)}
+                        className="text-carbon/40 hover:text-tierra" title="Quitar fruta del catálogo">
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
                   </td>
                 )}
               </tr>

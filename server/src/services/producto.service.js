@@ -28,6 +28,8 @@ function calcularMargen(costo, precioVenta) {
   return Number((((v - c) / c) * 100).toFixed(2));
 }
 
+const { sanitizar } = require('../utils/sanitizar');
+
 const ProductoService = {
   listar() {
     return ProductoModel.listar();
@@ -127,6 +129,25 @@ const PrecioService = {
       });
     }
     return this.listaDelDia(fecha);
+  },
+
+  /**
+   * Elimina el precio de un producto para una fecha específica.
+   * Si no se pasa fecha, elimina todos los precios del producto.
+   */
+  async eliminarPrecio(productoId, fecha) {
+    if (fecha) {
+      await pool.execute(
+        'DELETE FROM precios_diarios WHERE producto_id = ? AND fecha = ?',
+        [productoId, fecha]
+      );
+    } else {
+      await pool.execute(
+        'DELETE FROM precios_diarios WHERE producto_id = ?',
+        [productoId]
+      );
+    }
+    return { ok: true };
   },
 };
 

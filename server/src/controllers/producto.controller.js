@@ -27,6 +27,14 @@ const ProductoController = {
       res.json(await PrecioService.guardarLista(fecha, req.body.items));
     } catch (e) { next(e); }
   },
+
+  async eliminarPrecio(req, res, next) {
+    try {
+      const productoId = req.params.productoId;
+      const fecha = req.query.fecha; // opcional
+      res.json(await PrecioService.eliminarPrecio(productoId, fecha));
+    } catch (e) { next(e); }
+  },
 };
 
 module.exports = ProductoController;

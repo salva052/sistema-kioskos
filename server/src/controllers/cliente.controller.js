@@ -38,6 +38,12 @@ const ClienteController = {
       res.json(await ClienteService.eliminar(req.params.id));
     } catch (err) { next(err); }
   },
+
+  async resetearDeuda(req, res, next) {
+    try {
+      res.json(await ClienteService.resetearDeuda(req.params.id));
+    } catch (err) { next(err); }
+  },
 };
 
 module.exports = ClienteController;

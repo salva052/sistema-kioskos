@@ -3,6 +3,7 @@ const router = express.Router();
 
 const CobroController = require('../controllers/cobro.controller');
 const { autenticar, autorizar } = require('../middleware/auth');
+const validarId = require('../middleware/validarId');
 
 router.use(autenticar);
 

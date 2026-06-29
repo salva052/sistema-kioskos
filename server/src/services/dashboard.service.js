@@ -52,7 +52,13 @@ const DashboardService = {
     const clientesActivos = Number(actRows[0].num);
 
     // Deuda total pendiente (foto actual, no del periodo)
-    const [deudaRows] = await pool.execute('SELECT COALESCE(SUM(deuda), 0) AS total FROM clientes');
+    // Se calcula de dos formas para garantizar consistencia:
+    // 1. Suma de deuda en la tabla clientes (campo denormalizado, rápido)
+    // 2. Si hay diferencia, la fuente de verdad es clientes.deuda
+    // Para limpiar deudas de prueba, usar el endpoint PUT /clientes/:id/deuda
+    const [deudaRows] = await pool.execute(
+      'SELECT COALESCE(SUM(deuda), 0) AS total FROM clientes WHERE activo = TRUE AND deuda > 0'
+    );
     const deudaTotal = Number(deudaRows[0].total);
 
     const utilidad = Number((ingresos - egresos).toFixed(2));
