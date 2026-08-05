@@ -23,6 +23,7 @@ export default function Precios() {
   const [nuevaFruta, setNuevaFruta] = useState('');
   const [nuevoCosto, setNuevoCosto] = useState('');
   const [msg, setMsg] = useState('');
+  const [agregando, setAgregando] = useState(false);
 
   const cargar = async () => {
     setCargando(true); setError('');
@@ -80,22 +81,26 @@ export default function Precios() {
 
   const agregarFruta = async (e) => {
     e.preventDefault(); setMsg('');
+    if (agregando) return; // evita doble clic / doble submit
+    setAgregando(true);
     try {
-      await api.post('/productos', { nombre: nuevaFruta });
-      if (Number(nuevoCosto) > 0) {
-        const { data: prods } = await api.get('/productos');
-        const creada = prods.find((p) => p.nombre === nuevaFruta);
-        if (creada) {
-          await api.post('/productos/precios', {
-            fecha,
-            items: [{ productoId: creada.id, costo: Number(nuevoCosto), precioVenta: sugeridoDesde(nuevoCosto) }],
-          });
-        }
+      // Usamos la fruta que devuelve el backend directamente,
+      // en vez de volver a pedir la lista y buscarla por nombre
+      // (eso era fragil: mayusculas, espacios, o llegar antes de
+      // que el GET reflejara el nuevo registro podian fallar).
+      const { data: creada } = await api.post('/productos', { nombre: nuevaFruta });
+      if (Number(nuevoCosto) > 0 && creada?.id) {
+        await api.post('/productos/precios', {
+          fecha,
+          items: [{ productoId: creada.id, costo: Number(nuevoCosto), precioVenta: sugeridoDesde(nuevoCosto) }],
+        });
       }
       setNuevaFruta(''); setNuevoCosto('');
       cargar();
     } catch (err) {
       setMsg(err.response?.data?.error || 'No se pudo agregar la fruta');
+    } finally {
+      setAgregando(false);
     }
   };
 
@@ -160,7 +165,9 @@ export default function Precios() {
               </div>
             )}
             <div className="pb-0.5">
-              <Boton tipo="submit" variante="secundario">Agregar</Boton>
+              <Boton tipo="submit" variante="secundario" disabled={agregando}>
+                {agregando ? 'Agregando...' : 'Agregar'}
+              </Boton>
             </div>
           </form>
           {msg && <p className="mt-3 text-sm text-campo">{msg}</p>}

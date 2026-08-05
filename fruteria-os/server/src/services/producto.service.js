@@ -1,4 +1,5 @@
 const { ProductoModel, PrecioModel } = require('../models/producto.model');
+const pool = require('../config/db');
 
 // Margen objetivo sobre el precio de venta (30%).
 // El precio sugerido se obtiene dividiendo el costo entre (1 - 0.30) = 0.70,
@@ -35,13 +36,30 @@ const ProductoService = {
     return ProductoModel.listar();
   },
 
-  crear(datos) {
+  async crear(datos) {
+    datos.nombre = sanitizar(datos.nombre);
     if (!datos.nombre || datos.nombre.trim() === '') {
       const e = new Error('El nombre del producto es requerido');
       e.status = 400;
       throw e;
     }
-    return ProductoModel.crear(datos);
+    const nombreLimpio = datos.nombre.trim();
+
+    // Evitar duplicados: si ya existe (activo o no), no se crea uno nuevo.
+    const existente = await ProductoModel.buscarPorNombre(nombreLimpio);
+    if (existente) {
+      if (existente.activo) {
+        const e = new Error(`Ya existe una fruta llamada "${nombreLimpio}"`);
+        e.status = 409;
+        throw e;
+      }
+      // Estaba inactivo (se habia "quitado" antes) -> se reactiva en vez
+      // de crear una fila nueva. Esto es lo que evita la acumulacion
+      // de duplicados que causo el problema original.
+      return ProductoModel.reactivar(existente.id);
+    }
+
+    return ProductoModel.crear({ ...datos, nombre: nombreLimpio });
   },
 
   async actualizar(id, datos) {
@@ -121,6 +139,12 @@ const PrecioService = {
         e.status = 400;
         throw e;
       }
+      // Verificar que el producto exista y esté activo antes de guardar
+      const [prod] = await pool.execute(
+        'SELECT id FROM productos WHERE id = ? AND activo = TRUE LIMIT 1',
+        [it.productoId]
+      );
+      if (!prod[0]) continue; // ignorar productos inactivos o inexistentes
       await PrecioModel.guardar({
         productoId: it.productoId,
         costo: it.costo,
