@@ -4,6 +4,12 @@ const ProductoController = {
   async listar(req, res, next) {
     try { res.json(await ProductoService.listar()); } catch (e) { next(e); }
   },
+  async obtenerEnvio(req, res, next) {
+    try {
+      const fecha = req.query.fecha || new Date().toISOString().slice(0, 10);
+      res.json(await ProductoService.obtenerInfoEnvio(fecha));
+    } catch (e) { next(e); }
+  },
   async crear(req, res, next) {
     try { res.status(201).json(await ProductoService.crear(req.body)); } catch (e) { next(e); }
   },
@@ -30,7 +36,10 @@ const ProductoController = {
 
   async eliminarPrecio(req, res, next) {
     try {
-      const productoId = req.params.productoId;
+      const productoId = Number(req.params.productoId);
+      if (!Number.isInteger(productoId) || productoId <= 0) {
+        return res.status(400).json({ error: 'ID de producto inválido' });
+      }
       const fecha = req.query.fecha; // opcional
       res.json(await PrecioService.eliminarPrecio(productoId, fecha));
     } catch (e) { next(e); }

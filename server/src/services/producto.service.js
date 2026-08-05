@@ -1,4 +1,5 @@
 const { ProductoModel, PrecioModel } = require('../models/producto.model');
+const pool = require('../config/db');
 
 // Margen objetivo sobre el precio de venta (30%).
 // El precio sugerido se obtiene dividiendo el costo entre (1 - 0.30) = 0.70,
@@ -35,13 +36,30 @@ const ProductoService = {
     return ProductoModel.listar();
   },
 
-  crear(datos) {
+  async crear(datos) {
+    datos.nombre = sanitizar(datos.nombre);
     if (!datos.nombre || datos.nombre.trim() === '') {
       const e = new Error('El nombre del producto es requerido');
       e.status = 400;
       throw e;
     }
-    return ProductoModel.crear(datos);
+    const nombreLimpio = datos.nombre.trim();
+
+    // Evitar duplicados: si ya existe (activo o no), no se crea uno nuevo.
+    const existente = await ProductoModel.buscarPorNombre(nombreLimpio);
+    if (existente) {
+      if (existente.activo) {
+        const e = new Error(`Ya existe una fruta llamada "${nombreLimpio}"`);
+        e.status = 409;
+        throw e;
+      }
+      // Estaba inactivo (se habia "quitado" antes) -> se reactiva en vez
+      // de crear una fila nueva. Esto es lo que evita la acumulacion
+      // de duplicados que causo el problema original.
+      return ProductoModel.reactivar(existente.id);
+    }
+
+    return ProductoModel.crear({ ...datos, nombre: nombreLimpio });
   },
 
   async actualizar(id, datos) {
@@ -60,6 +78,40 @@ const ProductoService = {
     if (!prod) { const e = new Error('Producto no encontrado'); e.status = 404; throw e; }
     await ProductoModel.desactivar(id);
     return { ok: true };
+  },
+
+  /**
+   * Asegura que exista el producto especial "Envío" en el catalogo.
+   * Se usa para poder cobrar el envio de un pedido igual que un
+   * producto (aparece en el desglose y en la nota impresa), pero
+   * con precio LIBRE: se captura al crear el pedido, no viene del
+   * catalogo de Precios del dia, porque el costo de envio cambia
+   * segun la distancia/ubicacion de cada cliente.
+   */
+  async asegurarProductoEnvio() {
+    const existente = await ProductoModel.buscarPorNombre('Envío');
+    if (existente) {
+      if (!existente.activo) return ProductoModel.reactivar(existente.id);
+      return existente;
+    }
+    return ProductoModel.crear({ nombre: 'Envío', precioFijo: true, esEnvio: true });
+  },
+
+  /**
+   * Info que necesita el formulario de "Nuevo pedido" para poder
+   * ofrecer el apartado de envio: el id del producto especial, y
+   * opcionalmente un monto sugerido si el admin ya registro un
+   * precio de envio "por defecto" en Precios del dia.
+   */
+  async obtenerInfoEnvio(fecha) {
+    const envio = await this.asegurarProductoEnvio();
+    const fechaConsulta = fecha || new Date().toISOString().slice(0, 10);
+    const sugerido = await PrecioModel.precioVigente(envio.id, fechaConsulta);
+    return {
+      productoId: envio.id,
+      nombre: envio.nombre,
+      precioSugerido: sugerido != null ? Number(sugerido) : null,
+    };
   },
 };
 
@@ -121,6 +173,12 @@ const PrecioService = {
         e.status = 400;
         throw e;
       }
+      // Verificar que el producto exista y esté activo antes de guardar
+      const [prod] = await pool.execute(
+        'SELECT id FROM productos WHERE id = ? AND activo = TRUE LIMIT 1',
+        [it.productoId]
+      );
+      if (!prod[0]) continue; // ignorar productos inactivos o inexistentes
       await PrecioModel.guardar({
         productoId: it.productoId,
         costo: it.costo,

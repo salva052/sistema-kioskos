@@ -11,6 +11,7 @@ const pedidoRoutes    = require('./routes/pedido.routes');
 const cobroRoutes     = require('./routes/cobro.routes');
 const gastoRoutes     = require('./routes/gasto.routes');
 const dashboardRoutes = require('./routes/dashboard.routes');
+const { ProductoService } = require('./services/producto.service');
 
 const app  = express();
 const PORT = process.env.PORT || 3001;
@@ -97,5 +98,13 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
   console.log(`Sistema Kioskos API corriendo en el puerto ${PORT}`);
 });
+
+// Asegura que exista el producto especial "Envío" (precio libre por
+// pedido). Es idempotente: si ya existe no hace nada. Si la columna
+// es_envio aun no existe en la base (falta correr la migracion),
+// solo avisa por consola sin tumbar el servidor.
+ProductoService.asegurarProductoEnvio()
+  .then(() => console.log('Producto "Envío" listo.'))
+  .catch((e) => console.warn('[WARN] No se pudo preparar el producto Envío:', e.message));
 
 module.exports = app;

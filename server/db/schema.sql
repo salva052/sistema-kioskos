@@ -43,11 +43,14 @@ CREATE TABLE IF NOT EXISTS clientes (
 -- ------------------------------------------------------------
 --  PRODUCTOS (catalogo)
 --  precio_fijo: TRUE = no se le puede subir precio a ningun cliente
+--  es_envio: TRUE = producto especial "Envío". Su precio se captura
+--            por pedido (precio libre), no viene de Precios del dia.
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS productos (
   id          INT AUTO_INCREMENT PRIMARY KEY,
   nombre      VARCHAR(120) NOT NULL,
   precio_fijo BOOLEAN      NOT NULL DEFAULT FALSE,
+  es_envio    BOOLEAN      NOT NULL DEFAULT FALSE,
   activo      BOOLEAN      NOT NULL DEFAULT TRUE,
   creado_en   TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;

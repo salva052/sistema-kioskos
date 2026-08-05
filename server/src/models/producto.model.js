@@ -14,10 +14,27 @@ const ProductoModel = {
     return rows[0] || null;
   },
 
-  async crear({ nombre, precioFijo }) {
+  /**
+   * Busca un producto por nombre sin importar mayusculas/espacios,
+   * sin importar si esta activo o no. Se usa para evitar duplicados.
+   */
+  async buscarPorNombre(nombre) {
+    const [rows] = await pool.execute(
+      'SELECT * FROM productos WHERE LOWER(TRIM(nombre)) = LOWER(TRIM(?)) LIMIT 1',
+      [nombre]
+    );
+    return rows[0] || null;
+  },
+
+  async reactivar(id) {
+    await pool.execute('UPDATE productos SET activo = TRUE WHERE id = ?', [id]);
+    return this.buscarPorId(id);
+  },
+
+  async crear({ nombre, precioFijo, esEnvio }) {
     const [result] = await pool.execute(
-      'INSERT INTO productos (nombre, precio_fijo) VALUES (?, ?)',
-      [nombre, precioFijo ? 1 : 0]
+      'INSERT INTO productos (nombre, precio_fijo, es_envio) VALUES (?, ?, ?)',
+      [nombre, precioFijo ? 1 : 0, esEnvio ? 1 : 0]
     );
     return this.buscarPorId(result.insertId);
   },
@@ -51,6 +68,7 @@ const PrecioModel = {
        FROM precios_diarios p
        JOIN productos pr ON pr.id = p.producto_id
        WHERE p.fecha = ?
+         AND pr.activo = TRUE
        ORDER BY pr.nombre ASC`,
       [fecha]
     );
@@ -79,12 +97,17 @@ const PrecioModel = {
 
   /**
    * Precio de venta vigente de un producto en una fecha (para los pedidos).
+   * Solo devuelve precio si el producto existe y esta ACTIVO —
+   * asi un pedido nunca puede incluir productos desactivados,
+   * aunque el request salte el frontend y mande IDs directos.
    */
   async precioVigente(productoId, fecha) {
     const [rows] = await pool.execute(
-      `SELECT precio_venta FROM precios_diarios
-       WHERE producto_id = ? AND fecha <= ?
-       ORDER BY fecha DESC LIMIT 1`,
+      `SELECT p.precio_venta
+       FROM precios_diarios p
+       JOIN productos pr ON pr.id = p.producto_id AND pr.activo = TRUE
+       WHERE p.producto_id = ? AND p.fecha <= ?
+       ORDER BY p.fecha DESC LIMIT 1`,
       [productoId, fecha]
     );
     return rows[0]?.precio_venta ?? null;
