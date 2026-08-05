@@ -12,13 +12,17 @@ import { pesos, fechaCorta, hoyISO } from '../utils/format';
  * NO incluye margenes ni costos — solo lo que el cliente ve.
  */
 function buildNotaHTML({ titulo, numero, cliente, fecha, estado, detalle, total }) {
-  const filas = detalle.map(d => `
+  const filas = detalle.map(d => {
+    const nombre = d.producto_nombre || d.nombre;
+    const esEnvio = nombre === 'Envío';
+    return `
     <tr>
-      <td>${d.producto_nombre || d.nombre}</td>
-      <td class="right">${Number(d.cantidad)} kg</td>
+      <td>${nombre}</td>
+      <td class="right">${esEnvio ? '—' : Number(d.cantidad) + ' kg'}</td>
       <td class="right">$${Number(d.precio_unit || d.precioUnit).toFixed(2)}</td>
       <td class="right">$${Number(d.subtotal).toFixed(2)}</td>
-    </tr>`).join('');
+    </tr>`;
+  }).join('');
 
   return `<!DOCTYPE html><html lang="es"><head>
     <meta charset="UTF-8"/>
@@ -119,10 +123,23 @@ export default function Pedidos() {
   // Si un producto no tiene precio del día, no aparece en el select.
   const preciosHoy = useFetch(puedeCrear ? `/productos/precios?fecha=${hoyISO()}` : null);
   const productosConPrecio = (preciosHoy.datos?.items || []);
+  // Info del apartado de envio (id del producto especial + precio sugerido si Christian dejo uno).
+  const envioInfo = useFetch(puedeCrear ? `/productos/envio?fecha=${hoyISO()}` : null);
 
   const [clienteId, setClienteId] = useState('');
   const [reng, setReng] = useState([{ productoId: '', cantidad: '' }]);
+  const [cobrarEnvio, setCobrarEnvio] = useState(false);
+  const [montoEnvio, setMontoEnvio] = useState('');
   const [msg, setMsg] = useState('');
+
+  const toggleEnvio = (checked) => {
+    setCobrarEnvio(checked);
+    // Si hay un monto sugerido y el campo esta vacio, lo precargamos
+    // (Christian lo pudo dejar guardado en Precios del dia como default).
+    if (checked && !montoEnvio && envioInfo.datos?.precioSugerido) {
+      setMontoEnvio(String(envioInfo.datos.precioSugerido));
+    }
+  };
 
   const addReng = () => setReng([...reng, { productoId: '', cantidad: '' }]);
   const setRenglon = (i, campo, val) => {
@@ -131,13 +148,19 @@ export default function Pedidos() {
 
   const crear = async (e) => {
     e.preventDefault(); setMsg('');
+    if (cobrarEnvio && (!Number(montoEnvio) || Number(montoEnvio) <= 0)) {
+      setMsg('Escribe un monto de envío válido, o desmarca la casilla.');
+      return;
+    }
+    const items = reng.filter(r => r.productoId && r.cantidad)
+      .map(r => ({ productoId: Number(r.productoId), cantidad: Number(r.cantidad) }));
+    if (cobrarEnvio && envioInfo.datos?.productoId) {
+      items.push({ productoId: envioInfo.datos.productoId, cantidad: 1, precioManual: Number(montoEnvio) });
+    }
     try {
-      await api.post('/pedidos', {
-        clienteId: Number(clienteId),
-        items: reng.filter(r => r.productoId && r.cantidad)
-          .map(r => ({ productoId: Number(r.productoId), cantidad: Number(r.cantidad) })),
-      });
+      await api.post('/pedidos', { clienteId: Number(clienteId), items });
       setClienteId(''); setReng([{ productoId: '', cantidad: '' }]);
+      setCobrarEnvio(false); setMontoEnvio('');
       recargar();
     } catch (err) { setMsg(err.response?.data?.error || 'No se pudo crear el pedido'); }
   };
@@ -187,6 +210,36 @@ export default function Pedidos() {
             <button type="button" onClick={addReng} className="text-sm font-medium text-campo hover:underline">
               + Agregar producto
             </button>
+
+            {/* Apartado de envío: precio libre, no viene del catalogo del dia */}
+            <div className="rounded-lg border border-campo/15 bg-campo/5 p-3">
+              <label className="flex items-center gap-2 text-sm font-medium text-carbon cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={cobrarEnvio}
+                  onChange={e => toggleEnvio(e.target.checked)}
+                  className="h-4 w-4 rounded border-campo/30 text-campo focus:ring-campo/30"
+                />
+                🚚 Cobrar envío
+              </label>
+              {cobrarEnvio && (
+                <div className="mt-2 flex items-center gap-2">
+                  <span className="text-sm text-carbon/60">$</span>
+                  <input
+                    type="number" step="0.01" min="0" placeholder="0.00"
+                    value={montoEnvio}
+                    onChange={e => setMontoEnvio(e.target.value)}
+                    className="w-32 rounded-lg border border-campo/15 px-3 py-2 text-sm outline-none focus:border-campo"
+                  />
+                  {envioInfo.datos?.precioSugerido != null && (
+                    <span className="text-xs text-carbon/50">
+                      sugerido: {pesos(envioInfo.datos.precioSugerido)}
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+
             {productosConPrecio.length === 0 && (
               <p className="text-sm text-tierra">
                 No hay productos con precio registrado para hoy. Ve a <strong>Precios del día</strong> primero.
@@ -299,7 +352,9 @@ function FilaPedido({ pedido, puedeEntregar, onEntregar, esAdmin, onEliminar }) 
                   {detalle.map(d => (
                     <tr key={d.id}>
                       <td className="py-1.5 text-carbon">{d.producto_nombre}</td>
-                      <td className="py-1.5 text-right text-carbon/70">{Number(d.cantidad)} kg</td>
+                      <td className="py-1.5 text-right text-carbon/70">
+                        {d.producto_nombre === 'Envío' ? '—' : `${Number(d.cantidad)} kg`}
+                      </td>
                       <td className="py-1.5 text-right text-carbon/70">{pesos(d.precio_unit)}</td>
                       <td className="py-1.5 text-right font-medium text-carbon">{pesos(d.subtotal)}</td>
                       {esAdmin && (

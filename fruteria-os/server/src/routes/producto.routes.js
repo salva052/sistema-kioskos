@@ -15,6 +15,7 @@ router.delete('/precios/:productoId', autorizar('admin'), ProductoController.eli
 
 // Catalogo de productos: solo admin lo gestiona; todos lo consultan.
 router.get('/', autorizar('admin', 'tomador', 'repartidor'), ProductoController.listar);
+router.get('/envio', autorizar('admin', 'tomador', 'repartidor'), ProductoController.obtenerEnvio);
 router.post('/', autorizar('admin'), ProductoController.crear);
 router.put('/:id', validarId, autorizar('admin'), ProductoController.actualizar);
 router.delete('/:id', validarId, autorizar('admin'), ProductoController.eliminar);

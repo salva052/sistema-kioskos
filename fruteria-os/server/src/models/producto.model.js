@@ -31,10 +31,10 @@ const ProductoModel = {
     return this.buscarPorId(id);
   },
 
-  async crear({ nombre, precioFijo }) {
+  async crear({ nombre, precioFijo, esEnvio }) {
     const [result] = await pool.execute(
-      'INSERT INTO productos (nombre, precio_fijo) VALUES (?, ?)',
-      [nombre, precioFijo ? 1 : 0]
+      'INSERT INTO productos (nombre, precio_fijo, es_envio) VALUES (?, ?, ?)',
+      [nombre, precioFijo ? 1 : 0, esEnvio ? 1 : 0]
     );
     return this.buscarPorId(result.insertId);
   },

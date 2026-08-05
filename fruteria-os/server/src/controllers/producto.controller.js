@@ -4,6 +4,12 @@ const ProductoController = {
   async listar(req, res, next) {
     try { res.json(await ProductoService.listar()); } catch (e) { next(e); }
   },
+  async obtenerEnvio(req, res, next) {
+    try {
+      const fecha = req.query.fecha || new Date().toISOString().slice(0, 10);
+      res.json(await ProductoService.obtenerInfoEnvio(fecha));
+    } catch (e) { next(e); }
+  },
   async crear(req, res, next) {
     try { res.status(201).json(await ProductoService.crear(req.body)); } catch (e) { next(e); }
   },

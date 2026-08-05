@@ -1,6 +1,6 @@
 const PedidoModel = require('../models/pedido.model');
 const ClienteModel = require('../models/cliente.model');
-const { PrecioModel } = require('../models/producto.model');
+const { ProductoModel, PrecioModel } = require('../models/producto.model');
 
 const ESTADOS = ['pendiente', 'entregado'];
 
@@ -38,18 +38,47 @@ const PedidoService = {
     let total = 0;
 
     for (const it of items) {
-      if (!it.productoId || !it.cantidad || Number(it.cantidad) <= 0) {
-        const e = new Error('Cada renglon necesita producto y cantidad valida');
+      if (!it.productoId) {
+        const e = new Error('Cada renglon necesita un producto');
         e.status = 400; throw e;
       }
-      const precioUnit = await PrecioModel.precioVigente(it.productoId, fechaPedido);
-      if (precioUnit == null) {
-        const e = new Error(`No hay precio registrado para el producto ${it.productoId}`);
+      const producto = await ProductoModel.buscarPorId(it.productoId);
+      if (!producto || !producto.activo) {
+        const e = new Error('Uno de los productos ya no esta disponible');
         e.status = 400; throw e;
       }
-      const subtotal = Number((Number(precioUnit) * Number(it.cantidad)).toFixed(2));
+
+      let cantidad, precioUnit;
+
+      if (producto.es_envio) {
+        // El envio tiene precio LIBRE: se captura al armar el pedido
+        // (varia segun la distancia/ubicacion del cliente), no se
+        // toma del catalogo de Precios del dia como los demas productos.
+        const monto = Number(it.precioManual);
+        if (!monto || monto <= 0) {
+          const e = new Error('El monto del envío debe ser mayor a 0');
+          e.status = 400; throw e;
+        }
+        cantidad = 1;
+        precioUnit = monto;
+      } else {
+        if (!it.cantidad || Number(it.cantidad) <= 0) {
+          const e = new Error('Cada renglon necesita cantidad valida');
+          e.status = 400; throw e;
+        }
+        cantidad = Number(it.cantidad);
+        // El precio SIEMPRE se toma del servidor, nunca de lo que
+        // mande el navegador, para que nadie pueda alterar precios.
+        precioUnit = await PrecioModel.precioVigente(it.productoId, fechaPedido);
+        if (precioUnit == null) {
+          const e = new Error(`No hay precio registrado para el producto ${it.productoId}`);
+          e.status = 400; throw e;
+        }
+      }
+
+      const subtotal = Number((Number(precioUnit) * cantidad).toFixed(2));
       total += subtotal;
-      renglones.push({ productoId: it.productoId, cantidad: it.cantidad, precioUnit, subtotal });
+      renglones.push({ productoId: it.productoId, cantidad, precioUnit, subtotal });
     }
     total = Number(total.toFixed(2));
 

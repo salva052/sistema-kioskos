@@ -79,6 +79,40 @@ const ProductoService = {
     await ProductoModel.desactivar(id);
     return { ok: true };
   },
+
+  /**
+   * Asegura que exista el producto especial "Envío" en el catalogo.
+   * Se usa para poder cobrar el envio de un pedido igual que un
+   * producto (aparece en el desglose y en la nota impresa), pero
+   * con precio LIBRE: se captura al crear el pedido, no viene del
+   * catalogo de Precios del dia, porque el costo de envio cambia
+   * segun la distancia/ubicacion de cada cliente.
+   */
+  async asegurarProductoEnvio() {
+    const existente = await ProductoModel.buscarPorNombre('Envío');
+    if (existente) {
+      if (!existente.activo) return ProductoModel.reactivar(existente.id);
+      return existente;
+    }
+    return ProductoModel.crear({ nombre: 'Envío', precioFijo: true, esEnvio: true });
+  },
+
+  /**
+   * Info que necesita el formulario de "Nuevo pedido" para poder
+   * ofrecer el apartado de envio: el id del producto especial, y
+   * opcionalmente un monto sugerido si el admin ya registro un
+   * precio de envio "por defecto" en Precios del dia.
+   */
+  async obtenerInfoEnvio(fecha) {
+    const envio = await this.asegurarProductoEnvio();
+    const fechaConsulta = fecha || new Date().toISOString().slice(0, 10);
+    const sugerido = await PrecioModel.precioVigente(envio.id, fechaConsulta);
+    return {
+      productoId: envio.id,
+      nombre: envio.nombre,
+      precioSugerido: sugerido != null ? Number(sugerido) : null,
+    };
+  },
 };
 
 const PrecioService = {
