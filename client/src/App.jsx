@@ -9,6 +9,7 @@ import { Cargando } from './components/ui';
 // Lazy loading: las paginas se cargan solo cuando se visitan,
 // reduciendo el tamano inicial de la app (requisito de la rubrica).
 const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Reportes = lazy(() => import('./pages/Reportes'));
 const Clientes = lazy(() => import('./pages/Clientes'));
 const ClienteDetalle = lazy(() => import('./pages/ClienteDetalle'));
 const Pedidos = lazy(() => import('./pages/Pedidos'));
@@ -53,6 +54,9 @@ export default function App() {
           } />
           <Route path="gastos" element={
             <RutaProtegida roles={['admin']}><Gastos /></RutaProtegida>
+          } />
+          <Route path="reportes" element={
+            <RutaProtegida roles={['admin']}><Reportes /></RutaProtegida>
           } />
           <Route path="usuarios" element={
             <RutaProtegida roles={['admin']}><Usuarios /></RutaProtegida>

@@ -3,7 +3,7 @@ import PropTypes from 'prop-types';
 import { NavLink, useNavigate, Outlet } from 'react-router-dom';
 import {
   LayoutDashboard, Users, ShoppingCart, Wallet, Receipt,
-  Tag, LogOut, Menu, X, UserCog, Calculator,
+  Tag, LogOut, Menu, X, UserCog, Calculator, FileBarChart,
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { Badge } from '../ui';
@@ -18,6 +18,7 @@ const NAV = [
   { a: '/precios', icono: Tag, texto: 'Precios del día', roles: ['admin', 'tomador', 'repartidor'] },
   { a: '/cobros', icono: Wallet, texto: 'Cobros', roles: ['admin', 'repartidor'] },
   { a: '/gastos', icono: Receipt, texto: 'Gastos', roles: ['admin'] },
+  { a: '/reportes', icono: FileBarChart, texto: 'Reportes', roles: ['admin'] },
   { a: '/usuarios', icono: UserCog, texto: 'Usuarios', roles: ['admin'] },
 ];
 

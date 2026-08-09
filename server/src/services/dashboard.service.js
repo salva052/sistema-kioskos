@@ -29,6 +29,15 @@ const DashboardService = {
     );
     const egresos = Number(egrRows[0].total);
 
+    // Egresos desglosados por categoria, para el estado de resultados
+    const [egrCatRows] = await pool.execute(
+      `SELECT categoria, COALESCE(SUM(monto), 0) AS total
+       FROM gastos WHERE fecha BETWEEN ? AND ?
+       GROUP BY categoria ORDER BY total DESC`,
+      [d, h]
+    );
+    const egresosPorCategoria = egrCatRows.map(r => ({ categoria: r.categoria, monto: Number(r.total) }));
+
     // Nomina (subconjunto de egresos)
     const [nomRows] = await pool.execute(
       "SELECT COALESCE(SUM(monto), 0) AS total FROM gastos WHERE categoria = 'nomina' AND fecha BETWEEN ? AND ?",
@@ -69,6 +78,7 @@ const DashboardService = {
       periodo: { desde: d, hasta: h },
       ingresos,
       egresos,
+      egresosPorCategoria,
       utilidad,
       margen,
       nomina,

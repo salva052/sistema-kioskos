@@ -1,8 +1,10 @@
-import { TrendingUp, TrendingDown, Wallet, Users, Receipt, Package } from 'lucide-react';
+import { useState } from 'react';
+import { TrendingUp, TrendingDown, Wallet, Users, Receipt, Package, FileBarChart } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Cell } from 'recharts';
 import { useFetch } from '../hooks/useFetch';
 import { Tarjeta, Cargando, ErrorEstado } from '../components/ui';
-import { pesos } from '../utils/format';
+import { pesos, rangoPeriodo, etiquetaPeriodo } from '../utils/format';
 
 function Kpi({ icono: Icono, etiqueta, valor, tono = 'campo' }) {
   const tonos = {
@@ -20,11 +22,19 @@ function Kpi({ icono: Icono, etiqueta, valor, tono = 'campo' }) {
   );
 }
 
-export default function Dashboard() {
-  const { datos, cargando, error, recargar } = useFetch('/dashboard');
+const PERIODOS = [
+  { valor: 'dia', etiqueta: 'Hoy' },
+  { valor: 'mes', etiqueta: 'Este mes' },
+  { valor: 'anio', etiqueta: 'Este año' },
+];
 
-  if (cargando) return <Cargando texto="Cargando el panel..." />;
-  if (error) return <ErrorEstado mensaje={error} onReintentar={recargar} />;
+export default function Dashboard() {
+  // Selector de periodo: dia / mes / anio. Por defecto "mes",
+  // igual que se comportaba el panel antes de este cambio.
+  const [periodo, setPeriodo] = useState('mes');
+  const { desde, hasta } = rangoPeriodo(periodo);
+
+  const { datos, cargando, error, recargar } = useFetch(`/dashboard?desde=${desde}&hasta=${hasta}`);
 
   const d = datos || {};
   const barras = [
@@ -35,37 +45,67 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-display text-2xl font-600 text-campo-dark">Panel del negocio</h1>
-        <p className="text-sm text-carbon/55">Resumen del mes en curso</p>
-      </div>
-
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Kpi icono={TrendingUp} etiqueta="Ingresos" valor={pesos(d.ingresos)} />
-        <Kpi icono={TrendingDown} etiqueta="Egresos" valor={pesos(d.egresos)} tono="tierra" />
-        <Kpi icono={Wallet} etiqueta="Utilidad" valor={pesos(d.utilidad)} />
-        <Kpi icono={Receipt} etiqueta="Margen" valor={`${d.margen || 0}%`} />
-        <Kpi icono={Package} etiqueta="Ticket promedio" valor={pesos(d.ticketPromedio)} />
-        <Kpi icono={Users} etiqueta="Clientes activos" valor={d.clientesActivos || 0} />
-        <Kpi icono={Wallet} etiqueta="Nómina" valor={pesos(d.nomina)} tono="tierra" />
-        <Kpi icono={TrendingDown} etiqueta="Deuda por cobrar" valor={pesos(d.deudaTotal)} tono="tierra" />
-      </div>
-
-      <Tarjeta className="p-5">
-        <h2 className="mb-4 font-display text-lg font-600 text-campo-dark">Ingresos vs egresos</h2>
-        <div className="h-64">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={barras}>
-              <XAxis dataKey="nombre" tick={{ fontSize: 13, fill: '#2A2A28' }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 12, fill: '#999' }} axisLine={false} tickLine={false} width={70}
-                tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
-              <Bar dataKey="valor" radius={[6, 6, 0, 0]}>
-                {barras.map((b, i) => <Cell key={i} fill={b.color} />)}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+      <div className="flex items-start justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="font-display text-2xl font-600 text-campo-dark">Panel del negocio</h1>
+          <p className="text-sm text-carbon/55">Resumen de {etiquetaPeriodo(periodo)}</p>
         </div>
-      </Tarjeta>
+        <div className="flex items-center gap-2">
+          {/* Selector de periodo: Hoy / Este mes / Este año */}
+          <div className="flex rounded-lg border border-campo/15 bg-white p-1">
+            {PERIODOS.map((p) => (
+              <button
+                key={p.valor}
+                onClick={() => setPeriodo(p.valor)}
+                className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
+                  periodo === p.valor
+                    ? 'bg-campo text-white'
+                    : 'text-carbon/60 hover:text-campo-dark'
+                }`}
+              >
+                {p.etiqueta}
+              </button>
+            ))}
+          </div>
+          <Link
+            to="/reportes"
+            className="flex items-center gap-1.5 rounded-lg border border-campo/20 px-3 py-2 text-sm font-medium text-campo hover:bg-campo/10 transition"
+          >
+            <FileBarChart className="h-4 w-4" /> Estado de resultados
+          </Link>
+        </div>
+      </div>
+
+      {cargando ? <Cargando texto="Cargando el panel..." /> : error ? <ErrorEstado mensaje={error} onReintentar={recargar} /> : (
+        <>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <Kpi icono={TrendingUp} etiqueta="Ingresos" valor={pesos(d.ingresos)} />
+            <Kpi icono={TrendingDown} etiqueta="Egresos" valor={pesos(d.egresos)} tono="tierra" />
+            <Kpi icono={Wallet} etiqueta="Utilidad" valor={pesos(d.utilidad)} />
+            <Kpi icono={Receipt} etiqueta="Margen" valor={`${d.margen || 0}%`} />
+            <Kpi icono={Package} etiqueta="Ticket promedio" valor={pesos(d.ticketPromedio)} />
+            <Kpi icono={Users} etiqueta="Clientes activos" valor={d.clientesActivos || 0} />
+            <Kpi icono={Wallet} etiqueta="Nómina" valor={pesos(d.nomina)} tono="tierra" />
+            <Kpi icono={TrendingDown} etiqueta="Deuda por cobrar" valor={pesos(d.deudaTotal)} tono="tierra" />
+          </div>
+
+          <Tarjeta className="p-5">
+            <h2 className="mb-4 font-display text-lg font-600 text-campo-dark">Ingresos vs egresos</h2>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={barras}>
+                  <XAxis dataKey="nombre" tick={{ fontSize: 13, fill: '#2A2A28' }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 12, fill: '#999' }} axisLine={false} tickLine={false} width={70}
+                    tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
+                  <Bar dataKey="valor" radius={[6, 6, 0, 0]}>
+                    {barras.map((b, i) => <Cell key={i} fill={b.color} />)}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </Tarjeta>
+        </>
+      )}
     </div>
   );
 }
