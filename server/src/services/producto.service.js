@@ -81,20 +81,56 @@ const ProductoService = {
   },
 
   /**
-   * Asegura que exista el producto especial "Envío" en el catalogo.
-   * Se usa para poder cobrar el envio de un pedido igual que un
-   * producto (aparece en el desglose y en la nota impresa), pero
-   * con precio LIBRE: se captura al crear el pedido, no viene del
-   * catalogo de Precios del dia, porque el costo de envio cambia
-   * segun la distancia/ubicacion de cada cliente.
+   * Asegura que exista EXACTAMENTE un producto "Envío" correcto:
+   *  - activo = TRUE
+   *  - es_envio = TRUE  (esto es lo que permite el precio libre)
+   *
+   * Es robusto ante el historial: si de pruebas viejas quedaron
+   * productos "envio"/"Envío" (con o sin acento, duplicados, o con
+   * es_envio en 0), los normaliza: elige uno como oficial, lo marca
+   * correctamente, y desactiva los demas. Si no existe ninguno, lo crea.
    */
   async asegurarProductoEnvio() {
-    const existente = await ProductoModel.buscarPorNombre('Envío');
-    if (existente) {
-      if (!existente.activo) return ProductoModel.reactivar(existente.id);
-      return existente;
+    // 0. Auto-migración: agrega la columna es_envio si no existe aún.
+    //    Error 1060 = "Duplicate column name" = ya existe, ignorar.
+    try {
+      await pool.execute('ALTER TABLE productos ADD COLUMN es_envio BOOLEAN NOT NULL DEFAULT FALSE');
+      console.log('Migración aplicada: columna es_envio agregada.');
+    } catch (e) {
+      if (e.errno !== 1060) console.warn('[WARN] es_envio migration:', e.message);
     }
-    return ProductoModel.crear({ nombre: 'Envío', precioFijo: true, esEnvio: true });
+
+    // Busca todos los candidatos (con o sin acento, mayus/minus).
+    // No se usa ORDER BY es_envio porque la columna puede no existir
+    // todavia si la migracion aun no corrio. Ordenamos por activo e id.
+    const [filas] = await pool.execute(
+      `SELECT * FROM productos
+       WHERE LOWER(TRIM(nombre)) IN ('envio', 'envío')
+       ORDER BY activo DESC, id ASC`
+    );
+
+    if (filas.length === 0) {
+      // No hay ninguno: crear el oficial ya marcado como envio.
+      return ProductoModel.crear({ nombre: 'Envío', precioFijo: true, esEnvio: true });
+    }
+
+    // El primero (por el ORDER BY) es el mejor candidato a ser el oficial.
+    const oficial = filas[0];
+    await pool.execute(
+      "UPDATE productos SET nombre = 'Envío', es_envio = TRUE, activo = TRUE WHERE id = ?",
+      [oficial.id]
+    );
+
+    // Cualquier otro "envio" duplicado se desactiva para no confundir.
+    if (filas.length > 1) {
+      const otros = filas.slice(1).map(f => f.id);
+      await pool.execute(
+        `UPDATE productos SET activo = FALSE WHERE id IN (${otros.map(() => '?').join(',')})`,
+        otros
+      );
+    }
+
+    return ProductoModel.buscarPorId(oficial.id);
   },
 
   /**

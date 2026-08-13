@@ -69,6 +69,7 @@ const PrecioModel = {
        JOIN productos pr ON pr.id = p.producto_id
        WHERE p.fecha = ?
          AND pr.activo = TRUE
+         AND COALESCE(pr.es_envio, 0) = 0
        ORDER BY pr.nombre ASC`,
       [fecha]
     );

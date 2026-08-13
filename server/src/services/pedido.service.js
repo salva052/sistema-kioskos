@@ -50,10 +50,13 @@ const PedidoService = {
 
       let cantidad, precioUnit;
 
-      if (producto.es_envio) {
-        // El envio tiene precio LIBRE: se captura al armar el pedido
-        // (varia segun la distancia/ubicacion del cliente), no se
-        // toma del catalogo de Precios del dia como los demas productos.
+      // Si el item trae precioManual es un producto de precio libre (envio).
+      // Detectamos por: columna es_envio, nombre, o presencia de precioManual.
+      const esEnvio = producto.es_envio ||
+        producto.nombre?.toLowerCase().replace(/[íi]/g, 'i').trim() === 'envio' ||
+        (it.precioManual != null && it.precioManual !== '');
+
+      if (esEnvio) {
         const monto = Number(it.precioManual);
         if (!monto || monto <= 0) {
           const e = new Error('El monto del envío debe ser mayor a 0');
