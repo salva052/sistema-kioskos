@@ -33,7 +33,12 @@ const PedidoService = {
     const cliente = await ClienteModel.buscarPorId(clienteId);
     if (!cliente) { const e = new Error('Cliente no encontrado'); e.status = 404; throw e; }
 
-    const fechaPedido = fecha || new Date().toISOString().slice(0, 10);
+    // Si el frontend manda la fecha, la usamos (es la fecha local del cliente).
+    // Si no, calculamos la fecha actual en timezone México como fallback.
+    // NO usamos toISOString() porque eso da UTC, que en México puede ser
+    // un día diferente al local (especialmente después de las 6pm).
+    const fechaPedido = fecha ||
+      new Date().toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' });
     const renglones = [];
     let total = 0;
 

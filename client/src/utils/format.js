@@ -4,16 +4,24 @@ export function pesos(n) {
   return v.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
 }
 
-// Formatea una fecha ISO a algo legible
+// Formatea una fecha ISO a algo legible.
+// IMPORTANTE: new Date('YYYY-MM-DD') interpreta como UTC medianoche.
+// En México (UTC-6) eso aparece como el día anterior (18:00 del día previo).
+// La solución es construir la fecha con los componentes numéricos directamente
+// usando el constructor local: new Date(anio, mes, dia).
 export function fechaCorta(iso) {
   if (!iso) return '';
-  const d = new Date(iso);
-  return d.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' });
+  const str = String(iso).slice(0, 10);
+  const [anio, mes, dia] = str.split('-').map(Number);
+  return new Date(anio, mes - 1, dia).toLocaleDateString('es-MX', {
+    day: '2-digit', month: 'short', year: 'numeric',
+  });
 }
 
-// Fecha de hoy en formato YYYY-MM-DD
+// Fecha de hoy en formato YYYY-MM-DD usando la hora LOCAL del navegador,
+// no UTC. Evita que a partir de las 6pm México la fecha sea "mañana" en UTC.
 export function hoyISO() {
-  return new Date().toISOString().slice(0, 10);
+  return new Date().toLocaleDateString('en-CA'); // en-CA siempre da YYYY-MM-DD
 }
 
 const iso = (d) => d.toISOString().slice(0, 10);

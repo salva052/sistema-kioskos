@@ -158,7 +158,13 @@ export default function Pedidos() {
       items.push({ productoId: envioInfo.datos.productoId, cantidad: 1, precioManual: Number(montoEnvio) });
     }
     try {
-      await api.post('/pedidos', { clienteId: Number(clienteId), items });
+      await api.post('/pedidos', {
+        clienteId: Number(clienteId),
+        // Enviamos la fecha local del navegador para que el pedido quede
+        // con la fecha correcta de México, no la UTC del servidor.
+        fecha: hoyISO(),
+        items,
+      });
       setClienteId(''); setReng([{ productoId: '', cantidad: '' }]);
       setCobrarEnvio(false); setMontoEnvio('');
       recargar();

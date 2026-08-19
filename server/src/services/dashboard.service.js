@@ -7,10 +7,13 @@ const pool = require('../config/db');
  */
 const DashboardService = {
   async resumen({ desde, hasta }) {
-    // Rango por defecto: mes actual
-    const hoy = new Date();
-    const inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString().slice(0, 10);
-    const finMes = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0).toISOString().slice(0, 10);
+    // Fecha actual en timezone México (no UTC) para que los rangos sean correctos
+    const tz = 'America/Mexico_City';
+    const hoyMx = new Date().toLocaleDateString('en-CA', { timeZone: tz });
+    const [anio, mes] = hoyMx.split('-').map(Number);
+    const inicioMes = `${anio}-${String(mes).padStart(2,'0')}-01`;
+    const ultimoDia = new Date(anio, mes, 0).getDate();
+    const finMes = `${anio}-${String(mes).padStart(2,'0')}-${String(ultimoDia).padStart(2,'0')}`;
     const d = desde || inicioMes;
     const h = hasta || finMes;
 

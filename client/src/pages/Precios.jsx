@@ -1,9 +1,70 @@
 import { useState, useEffect } from 'react';
-import { Save, Plus, Trash2, Sparkles } from 'lucide-react';
+import { Save, Plus, Trash2, Sparkles, Printer } from 'lucide-react';
 import api from '../api/axios';
 import { useAuth } from '../hooks/useAuth';
 import { Tarjeta, Cargando, ErrorEstado, Boton, Badge, Campo, Input } from '../components/ui';
-import { pesos, hoyISO } from '../utils/format';
+import { pesos, hoyISO, fechaCorta } from '../utils/format';
+
+function imprimirPrecios(items, fecha) {
+  const filas = items.map(it => `
+    <tr>
+      <td>${it.nombre}</td>
+      <td class="right">$${Number(it.costo).toFixed(2)}</td>
+      <td class="right">$${Number(it.precio_venta).toFixed(2)}</td>
+      <td class="right">${it.margen !== undefined ? it.margen + '%' : ''}</td>
+    </tr>`).join('');
+
+  const win = window.open('', '_blank');
+  win.document.write(`<!DOCTYPE html><html lang="es"><head>
+    <meta charset="UTF-8"/>
+    <title>Precios del día</title>
+    <style>
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body { font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #1a1a1a; padding: 24px 28px; }
+      .header { display: flex; align-items: center; gap: 14px; padding-bottom: 12px; border-bottom: 2px solid #2D5016; margin-bottom: 16px; }
+      .logo { width: 48px; height: 48px; object-fit: contain; }
+      .marca h1 { font-size: 17px; font-weight: bold; color: #2D5016; }
+      .marca p { font-size: 10px; color: #888; }
+      .titulo { margin-left: auto; text-align: right; }
+      .titulo .etq { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: .5px; }
+      .titulo .fch { font-size: 14px; font-weight: bold; color: #2D5016; text-transform: capitalize; }
+      table { width: 100%; border-collapse: collapse; margin-top: 4px; }
+      thead tr { background: #f0f7ee; }
+      th { padding: 7px 10px; text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: .4px; color: #2D5016; border-bottom: 1px solid #c8e6c9; }
+      td { padding: 6px 10px; border-bottom: 1px solid #f0f0f0; font-size: 12px; }
+      .right { text-align: right; }
+      .footer { margin-top: 20px; text-align: center; font-size: 10px; color: #aaa; border-top: 1px solid #eee; padding-top: 10px; }
+      @media print { body { padding: 10px 14px; } @page { margin: 0.5cm; } }
+    </style>
+  </head><body>
+    <div class="header">
+      <img class="logo" src="/logo.png" alt="Logo" />
+      <div class="marca">
+        <h1>Frutería Kiosko's</h1>
+        <p>Distribuidora de Fruta y Verdura</p>
+      </div>
+      <div class="titulo">
+        <div class="etq">Precios del día</div>
+        <div class="fch">${new Date(fecha + 'T12:00:00').toLocaleDateString('es-MX', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}</div>
+      </div>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Producto</th>
+          <th class="right">Costo por kg</th>
+          <th class="right">Precio de venta</th>
+          <th class="right">Ganancia</th>
+        </tr>
+      </thead>
+      <tbody>${filas}</tbody>
+    </table>
+    <div class="footer">Frutería Kiosko's — Lista de precios generada el ${new Date().toLocaleDateString('es-MX')}</div>
+  </body></html>`);
+  win.document.close();
+  win.focus();
+  setTimeout(() => { win.print(); win.close(); }, 500);
+}
 
 function sugeridoDesde(costo) {
   const c = Number(costo);
@@ -23,6 +84,7 @@ export default function Precios() {
   const [nuevaFruta, setNuevaFruta] = useState('');
   const [nuevoCosto, setNuevoCosto] = useState('');
   const [msg, setMsg] = useState('');
+  const [agregando, setAgregando] = useState(false);
 
   const cargar = async () => {
     setCargando(true); setError('');
@@ -80,22 +142,41 @@ export default function Precios() {
 
   const agregarFruta = async (e) => {
     e.preventDefault(); setMsg('');
+    if (agregando) return;
+    setAgregando(true);
     try {
-      await api.post('/productos', { nombre: nuevaFruta });
-      if (Number(nuevoCosto) > 0) {
-        const { data: prods } = await api.get('/productos');
-        const creada = prods.find((p) => p.nombre === nuevaFruta);
-        if (creada) {
-          await api.post('/productos/precios', {
-            fecha,
-            items: [{ productoId: creada.id, costo: Number(nuevoCosto), precioVenta: sugeridoDesde(nuevoCosto) }],
-          });
-        }
+      const { data: creada } = await api.post('/productos', { nombre: nuevaFruta });
+      if (Number(nuevoCosto) > 0 && creada?.id) {
+        await api.post('/productos/precios', {
+          fecha,
+          items: [{ productoId: creada.id, costo: Number(nuevoCosto), precioVenta: sugeridoDesde(nuevoCosto) }],
+        });
       }
       setNuevaFruta(''); setNuevoCosto('');
       cargar();
     } catch (err) {
-      setMsg(err.response?.data?.error || 'No se pudo agregar la fruta');
+      const status = err.response?.status;
+      const body = err.response?.data;
+
+      // Si el producto ya existía (409) y tenemos su ID, guardamos el
+      // precio de todas formas para que no quede "atrapado" sin precio.
+      if (status === 409 && body?.productoExistente?.id && Number(nuevoCosto) > 0) {
+        try {
+          await api.post('/productos/precios', {
+            fecha,
+            items: [{ productoId: body.productoExistente.id, costo: Number(nuevoCosto), precioVenta: sugeridoDesde(nuevoCosto) }],
+          });
+          setNuevaFruta(''); setNuevoCosto('');
+          setMsg(`Precio actualizado para "${body.productoExistente.nombre}".`);
+          cargar();
+          return;
+        } catch {
+          // si tampoco el precio se guarda, mostramos el error original
+        }
+      }
+      setMsg(body?.error || 'No se pudo agregar la fruta');
+    } finally {
+      setAgregando(false);
     }
   };
 
@@ -131,11 +212,20 @@ export default function Precios() {
             Margen general: <span className="font-semibold text-campo">{margenGeneral}%</span>
           </p>
         </div>
-        {esAdmin && (
-          <Boton onClick={guardar} disabled={guardando}>
-            <Save className="h-4 w-4" />{guardando ? 'Guardando...' : 'Guardar precios'}
-          </Boton>
-        )}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => imprimirPrecios(items, fecha)}
+            disabled={!items || items.length === 0}
+            className="flex items-center gap-1.5 rounded-lg border border-campo/20 px-3 py-2 text-sm font-medium text-campo hover:bg-campo/10 transition disabled:opacity-40"
+          >
+            <Printer className="h-4 w-4" /> Imprimir lista
+          </button>
+          {esAdmin && (
+            <Boton onClick={guardar} disabled={guardando}>
+              <Save className="h-4 w-4" />{guardando ? 'Guardando...' : 'Guardar precios'}
+            </Boton>
+          )}
+        </div>
       </div>
 
       {esAdmin && (
@@ -160,7 +250,9 @@ export default function Precios() {
               </div>
             )}
             <div className="pb-0.5">
-              <Boton tipo="submit" variante="secundario">Agregar</Boton>
+              <Boton tipo="submit" variante="secundario" disabled={agregando}>
+                {agregando ? 'Agregando...' : 'Agregar'}
+              </Boton>
             </div>
           </form>
           {msg && <p className="mt-3 text-sm text-campo">{msg}</p>}
