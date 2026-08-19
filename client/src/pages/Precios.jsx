@@ -9,7 +9,7 @@ function imprimirPrecios(items, fecha) {
   const filas = items.map(it => `
     <tr>
       <td>${it.nombre}</td>
-      <td class="right"><strong>$${Number(it.precio_venta).toFixed(2)}</strong></td>
+      <td class="right"><strong>$${Number(it.precioVenta).toFixed(2)}</strong></td>
     </tr>`).join('');
 
   const win = window.open('', '_blank');
