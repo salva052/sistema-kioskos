@@ -9,9 +9,7 @@ function imprimirPrecios(items, fecha) {
   const filas = items.map(it => `
     <tr>
       <td>${it.nombre}</td>
-      <td class="right">$${Number(it.costo).toFixed(2)}</td>
-      <td class="right">$${Number(it.precio_venta).toFixed(2)}</td>
-      <td class="right">${it.margen !== undefined ? it.margen + '%' : ''}</td>
+      <td class="right"><strong>$${Number(it.precio_venta).toFixed(2)}</strong></td>
     </tr>`).join('');
 
   const win = window.open('', '_blank');
@@ -20,19 +18,21 @@ function imprimirPrecios(items, fecha) {
     <title>Precios del día</title>
     <style>
       * { box-sizing: border-box; margin: 0; padding: 0; }
-      body { font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #1a1a1a; padding: 24px 28px; }
+      body { font-family: Arial, Helvetica, sans-serif; font-size: 13px; color: #1a1a1a; padding: 24px 28px; }
       .header { display: flex; align-items: center; gap: 14px; padding-bottom: 12px; border-bottom: 2px solid #2D5016; margin-bottom: 16px; }
-      .logo { width: 48px; height: 48px; object-fit: contain; }
-      .marca h1 { font-size: 17px; font-weight: bold; color: #2D5016; }
-      .marca p { font-size: 10px; color: #888; }
+      .logo { width: 52px; height: 52px; object-fit: contain; }
+      .marca h1 { font-size: 18px; font-weight: bold; color: #2D5016; }
+      .marca p { font-size: 11px; color: #888; margin-top: 2px; }
       .titulo { margin-left: auto; text-align: right; }
       .titulo .etq { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: .5px; }
       .titulo .fch { font-size: 14px; font-weight: bold; color: #2D5016; text-transform: capitalize; }
-      table { width: 100%; border-collapse: collapse; margin-top: 4px; }
+      .subtitulo { font-size: 11px; color: #888; margin-bottom: 12px; }
+      table { width: 100%; border-collapse: collapse; }
       thead tr { background: #f0f7ee; }
-      th { padding: 7px 10px; text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: .4px; color: #2D5016; border-bottom: 1px solid #c8e6c9; }
-      td { padding: 6px 10px; border-bottom: 1px solid #f0f0f0; font-size: 12px; }
+      th { padding: 8px 12px; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .4px; color: #2D5016; border-bottom: 1px solid #c8e6c9; }
+      td { padding: 7px 12px; border-bottom: 1px solid #f0f0f0; font-size: 13px; }
       .right { text-align: right; }
+      tr:nth-child(even) { background: #fafff8; }
       .footer { margin-top: 20px; text-align: center; font-size: 10px; color: #aaa; border-top: 1px solid #eee; padding-top: 10px; }
       @media print { body { padding: 10px 14px; } @page { margin: 0.5cm; } }
     </style>
@@ -44,22 +44,21 @@ function imprimirPrecios(items, fecha) {
         <p>Distribuidora de Fruta y Verdura</p>
       </div>
       <div class="titulo">
-        <div class="etq">Precios del día</div>
+        <div class="etq">Lista de precios</div>
         <div class="fch">${new Date(fecha + 'T12:00:00').toLocaleDateString('es-MX', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}</div>
       </div>
     </div>
+    <p class="subtitulo">Precios por kilogramo</p>
     <table>
       <thead>
         <tr>
           <th>Producto</th>
-          <th class="right">Costo por kg</th>
-          <th class="right">Precio de venta</th>
-          <th class="right">Ganancia</th>
+          <th class="right">Precio por kg</th>
         </tr>
       </thead>
       <tbody>${filas}</tbody>
     </table>
-    <div class="footer">Frutería Kiosko's — Lista de precios generada el ${new Date().toLocaleDateString('es-MX')}</div>
+    <div class="footer">Frutería Kiosko's — Precios sujetos a cambio sin previo aviso</div>
   </body></html>`);
   win.document.close();
   win.focus();
