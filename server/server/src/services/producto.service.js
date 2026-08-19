@@ -49,13 +49,15 @@ const ProductoService = {
     const existente = await ProductoModel.buscarPorNombre(nombreLimpio);
     if (existente) {
       if (existente.activo) {
-        const e = new Error(`Ya existe una fruta llamada "${nombreLimpio}"`);
+        // El producto ya existe y está activo. Devolvemos su info en el
+        // error para que el frontend pueda guardar el precio de todas
+        // formas sin que el usuario quede bloqueado.
+        const e = new Error(`"${nombreLimpio}" ya estaba en el catálogo. Se guardará su precio.`);
         e.status = 409;
+        e.productoExistente = existente;
         throw e;
       }
-      // Estaba inactivo (se habia "quitado" antes) -> se reactiva en vez
-      // de crear una fila nueva. Esto es lo que evita la acumulacion
-      // de duplicados que causo el problema original.
+      // Estaba inactivo → reactivar
       return ProductoModel.reactivar(existente.id);
     }
 
@@ -100,11 +102,13 @@ const ProductoService = {
       if (e.errno !== 1060) console.warn('[WARN] es_envio migration:', e.message);
     }
 
-    // Busca todos los candidatos (con o sin acento, mayus/minus)
+    // Busca todos los candidatos (con o sin acento, mayus/minus).
+    // No se usa ORDER BY es_envio porque la columna puede no existir
+    // todavia si la migracion aun no corrio. Ordenamos por activo e id.
     const [filas] = await pool.execute(
       `SELECT * FROM productos
        WHERE LOWER(TRIM(nombre)) IN ('envio', 'envío')
-       ORDER BY es_envio DESC, activo DESC, id ASC`
+       ORDER BY activo DESC, id ASC`
     );
 
     if (filas.length === 0) {
