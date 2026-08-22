@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Calculator, Plus, Trash2, Printer } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import api from '../api/axios';
 import { useFetch } from '../hooks/useFetch';
 import { useAuth } from '../hooks/useAuth';
 import { Tarjeta, Vacio, Boton, Campo, Select } from '../components/ui';
@@ -15,48 +14,97 @@ export default function Cotizaciones() {
   const clientes = useFetch('/clientes');
   const precios  = useFetch(`/productos/precios?fecha=${hoyISO()}`);
 
-  // Mapa productoId -> { precio, costo, nombre }
-  // Solo contiene productos que tienen precio registrado (hoy o heredado).
-  // Los productos sin precio no aparecen en el select para evitar errores.
+  // Solo productos con precio registrado (hoy o heredado)
   const precioMap = {};
   (precios.datos?.items || []).forEach(p => {
     precioMap[p.productoId] = { precio: p.precioVenta, costo: p.costo, nombre: p.nombre };
   });
-  const productosConPrecio = Object.entries(precioMap).map(([id, v]) => ({ id: Number(id), ...v }))
+  const productosConPrecio = Object.entries(precioMap)
+    .map(([id, v]) => ({ id: Number(id), ...v }))
     .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
 
   const [clienteId, setClienteId] = useState('');
-  const [reng, setReng] = useState([{ productoId: '', cantidad: '' }]);
+  const [reng, setReng]           = useState([{ productoId: '', cantidad: '' }]);
   const [resultado, setResultado] = useState(null);
-  const [msg, setMsg] = useState('');
+  const [errores, setErrores]     = useState([]); // errores por renglon
 
-  const addReng    = () => setReng([...reng, { productoId: '', cantidad: '' }]);
-  const quitarReng = (i) => setReng(reng.filter((_, idx) => idx !== i));
+  const addReng    = () => {
+    if (reng.length >= 30) return; // máximo 30 productos por cotización
+    setReng([...reng, { productoId: '', cantidad: '' }]);
+  };
+  const quitarReng = (i) => {
+    if (reng.length === 1) return; // siempre al menos 1
+    setReng(reng.filter((_, idx) => idx !== i));
+    setErrores(errores.filter((_, idx) => idx !== i));
+  };
   const setRenglon = (i, campo, val) => {
     const c = [...reng]; c[i] = { ...c[i], [campo]: val }; setReng(c);
+    // Limpiar error de ese renglon al editar
+    const e = [...errores]; e[i] = ''; setErrores(e);
+    // Limpiar resultado al cambiar el formulario
+    setResultado(null);
+  };
+
+  // ── Validaciones antes de calcular ─────────────────────────────────────────
+  const validar = () => {
+    const nuevosErrores = reng.map(() => '');
+    let hayError = false;
+
+    const idsUsados = new Set();
+
+    reng.forEach((r, i) => {
+      const pid = Number(r.productoId);
+      const qty = Number(r.cantidad);
+
+      if (!r.productoId) {
+        nuevosErrores[i] = 'Selecciona un producto.';
+        hayError = true;
+        return;
+      }
+      if (!r.cantidad || isNaN(qty)) {
+        nuevosErrores[i] = 'Escribe una cantidad.';
+        hayError = true;
+        return;
+      }
+      if (qty <= 0) {
+        nuevosErrores[i] = 'La cantidad debe ser mayor a 0.';
+        hayError = true;
+        return;
+      }
+      if (qty > 10000) {
+        nuevosErrores[i] = 'La cantidad parece muy alta (máx. 10,000 kg).';
+        hayError = true;
+        return;
+      }
+      if (idsUsados.has(pid)) {
+        nuevosErrores[i] = 'Este producto ya está en la lista.';
+        hayError = true;
+        return;
+      }
+      idsUsados.add(pid);
+    });
+
+    setErrores(nuevosErrores);
+    return !hayError;
   };
 
   const calcular = (e) => {
-    e.preventDefault(); setMsg('');
-    const items = reng.filter(r => r.productoId && Number(r.cantidad) > 0);
-    if (!items.length) { setMsg('Agrega al menos un producto con cantidad.'); return; }
+    e.preventDefault();
+    if (!validar()) return;
 
-    const detalle = items.map(r => {
+    const itemsValidos = reng.filter(r => r.productoId && Number(r.cantidad) > 0);
+    const detalle = itemsValidos.map(r => {
       const pid  = Number(r.productoId);
       const info = precioMap[pid];
-      if (!info) return null;
       const cantidad = Number(r.cantidad);
       const subtotal = Number((info.precio * cantidad).toFixed(2));
       const margen   = Number(((info.precio - info.costo) * cantidad).toFixed(2));
       return { productoId: pid, nombre: info.nombre, cantidad, precioUnit: info.precio, costo: info.costo, subtotal, margen };
-    }).filter(Boolean);
+    });
 
-    if (!detalle.length) { setMsg('Selecciona al menos un producto y escribe la cantidad.'); return; }
-
-    const total      = Number(detalle.reduce((s, d) => s + d.subtotal, 0).toFixed(2));
+    const total       = Number(detalle.reduce((s, d) => s + d.subtotal, 0).toFixed(2));
     const margenTotal = Number(detalle.reduce((s, d) => s + d.margen, 0).toFixed(2));
-    const cliente    = clientes.datos?.find(c => c.id === Number(clienteId));
-
+    const cliente     = clientes.datos?.find(c => c.id === Number(clienteId));
     setResultado({ detalle, total, margenTotal, cliente });
   };
 
@@ -71,7 +119,6 @@ export default function Cotizaciones() {
         <td class="right">$${d.precioUnit.toFixed(2)}</td>
         <td class="right">$${d.subtotal.toFixed(2)}</td>
       </tr>`).join('');
-
     win.document.write(`<!DOCTYPE html><html lang="es"><head>
       <meta charset="UTF-8"/><title>Cotización</title>
       <style>
@@ -121,10 +168,14 @@ export default function Cotizaciones() {
   };
 
   const limpiar = () => {
-    setClienteId(''); setReng([{ productoId: '', cantidad: '' }]); setResultado(null); setMsg('');
+    setClienteId('');
+    setReng([{ productoId: '', cantidad: '' }]);
+    setResultado(null);
+    setErrores([]);
   };
 
   const cargandoPrecios = precios.cargando;
+  const sinPrecios = !cargandoPrecios && productosConPrecio.length === 0;
 
   return (
     <div className="space-y-6">
@@ -133,6 +184,12 @@ export default function Cotizaciones() {
         <p className="text-sm text-carbon/55">Calcula cuánto saldría un pedido sin registrarlo. Usa los precios del día.</p>
       </div>
 
+      {sinPrecios && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+          ⚠️ No hay precios registrados para hoy. Ve a <strong>Precios del día</strong> y guarda los precios antes de cotizar.
+        </div>
+      )}
+
       <div className="grid gap-6 lg:grid-cols-2">
         <Tarjeta className="p-5 h-fit">
           <h2 className="mb-4 flex items-center gap-2 font-display text-lg font-600 text-campo-dark">
@@ -140,7 +197,7 @@ export default function Cotizaciones() {
           </h2>
           <form onSubmit={calcular} className="space-y-3">
             <Campo etiqueta="Cliente (opcional)">
-              <Select value={clienteId} onChange={e => setClienteId(e.target.value)}>
+              <Select value={clienteId} onChange={e => { setClienteId(e.target.value); setResultado(null); }}>
                 <option value="">Sin cliente específico</option>
                 {(clientes.datos || []).map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
               </Select>
@@ -148,49 +205,61 @@ export default function Cotizaciones() {
 
             <div className="space-y-2">
               {reng.map((r, i) => (
-                <div key={i} className="flex gap-2 items-center">
-                  <Select value={r.productoId} onChange={e => setRenglon(i, 'productoId', e.target.value)}>
-                    <option value="">
-                      {cargandoPrecios ? 'Cargando...' : 'Producto...'}
-                    </option>
-                    {productosConPrecio.map(p => (
-                      <option key={p.id} value={p.id}>
-                        {p.nombre} — ${p.precio.toFixed(2)}/kg
+                <div key={i} className="space-y-1">
+                  <div className="flex gap-2 items-center">
+                    <Select
+                      value={r.productoId}
+                      onChange={e => setRenglon(i, 'productoId', e.target.value)}
+                      className={errores[i] ? 'border-tierra/50' : ''}
+                    >
+                      <option value="">
+                        {cargandoPrecios ? 'Cargando precios...' : 'Selecciona producto...'}
                       </option>
-                    ))}
-                  </Select>
-                  <input
-                    type="number" step="0.01" placeholder="kg"
-                    value={r.cantidad}
-                    onChange={e => setRenglon(i, 'cantidad', e.target.value)}
-                    className="w-24 rounded-lg border border-campo/15 px-3 py-2.5 text-sm outline-none focus:border-campo"
-                  />
-                  {reng.length > 1 && (
-                    <button type="button" onClick={() => quitarReng(i)} className="text-carbon/40 hover:text-tierra">
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                      {productosConPrecio.map(p => (
+                        <option
+                          key={p.id}
+                          value={p.id}
+                          disabled={reng.some((rr, ii) => ii !== i && Number(rr.productoId) === p.id)}
+                        >
+                          {p.nombre} — ${p.precio.toFixed(2)}/kg
+                        </option>
+                      ))}
+                    </Select>
+                    <input
+                      type="number" step="0.01" min="0.01" max="10000"
+                      placeholder="kg"
+                      value={r.cantidad}
+                      onChange={e => setRenglon(i, 'cantidad', e.target.value)}
+                      className={`w-24 rounded-lg border px-3 py-2.5 text-sm outline-none focus:border-campo ${errores[i] ? 'border-tierra/50 bg-tierra/5' : 'border-campo/15'}`}
+                    />
+                    {reng.length > 1 && (
+                      <button type="button" onClick={() => quitarReng(i)} className="text-carbon/40 hover:text-tierra flex-shrink-0">
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                  {errores[i] && (
+                    <p className="text-xs text-tierra pl-1">{errores[i]}</p>
                   )}
                 </div>
               ))}
             </div>
 
-            <button type="button" onClick={addReng} className="text-sm font-medium text-campo hover:underline">
-              <Plus className="inline h-3.5 w-3.5 mr-1" />Agregar producto
-            </button>
-
-            {productosConPrecio.length === 0 && !cargandoPrecios && (
-              <p className="text-xs text-tierra">
-                No hay precios registrados para hoy. Ve a <strong>Precios del día</strong> primero.
-              </p>
+            {reng.length < 30 && (
+              <button type="button" onClick={addReng}
+                className="text-sm font-medium text-campo hover:underline disabled:opacity-40"
+                disabled={sinPrecios}>
+                <Plus className="inline h-3.5 w-3.5 mr-1" />Agregar producto
+              </button>
             )}
 
-            {msg && <p className="text-sm text-tierra">{msg}</p>}
-
-            <div className="flex gap-2">
-              <Boton tipo="submit" disabled={cargandoPrecios}>
+            <div className="flex gap-2 pt-1">
+              <Boton tipo="submit" disabled={cargandoPrecios || sinPrecios}>
                 <Calculator className="h-4 w-4" />Calcular
               </Boton>
-              {resultado && <Boton variante="fantasma" tipo="button" onClick={limpiar}>Limpiar</Boton>}
+              {(resultado || reng.some(r => r.productoId || r.cantidad)) && (
+                <Boton variante="fantasma" tipo="button" onClick={limpiar}>Limpiar</Boton>
+              )}
             </div>
           </form>
         </Tarjeta>
@@ -245,7 +314,6 @@ export default function Cotizaciones() {
               {esAdmin && (
                 <p className="mt-3 text-xs text-carbon/50">El margen no aparece en la impresión.</p>
               )}
-
               <div className="mt-4">
                 <Boton variante="secundario" onClick={() => navigate('/pedidos')}>
                   Ir a crear pedido real
